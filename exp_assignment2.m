@@ -86,6 +86,7 @@ QuadrantType = [];
 Accuracy_2 = [];
 Accuracy_1 = [];
 Matching = [];
+rt_vector_one = [];
 
 %giving colors a name for later use
 rcolor = [255 0 0];
@@ -95,6 +96,7 @@ white = [255 255 255];
 pw = 3;
 timeBetweenTrials = 1;
 breakAfterTrials = 240;
+trialTimeout = 3;
 
 triangleSize = 50; % Adjust as needed
 
@@ -143,7 +145,13 @@ intermediateProbQuadrants = quadrantAssignments(3:4); % Intermediate probability
 numTrials = 3;
 targetQuadrantHistory = zeros(1, numTrials); % To record target quadrant in each trial
 
-instruction = ['Instruction'];
+instruction = ['In this task, you will see 8 triangles on the screen, with 2 in each quadrant.\n' ...
+    ' Your goal is to find the quadrant where two triangles point in the same direction.\n' ...
+    ' Press the Left Arrow if they are facing left, and the Right Arrow if they are facing right.\n'...
+    'Before the triangles appear, the letter e will briefly be shown in one quadrant.\n ' ...
+    'After responding to the triangles, another e will appear.\n ' ...
+    'Press S if the second e is in the same location as the first,\n or D if it is in a different location.' ...
+    'Press any key to start!'];
 
 DrawFormattedText(window, instruction,'center', 'center', white);
 Screen(window, 'Flip');
@@ -155,15 +163,14 @@ for trial = 1:numTrials
     condi_ran = randperm(100);
     rep_ran = randperm(100);
 
-    if condi_ran(1) > 66
-        con = 3; % Intermediate probability
-    elseif condi_ran(1) < 67
-        if rep_ran(1) > 65
-            con = 2; % Low probability
-        else
-            con = 1; % High probability
-        end
-    end
+    if condi_ran(1) > 50 
+        con = 3; % Intermediate probability (25% for two quadrants each)
+    elseif condi_ran(1) < 13
+        con = 2; %low probability
+    elseif condi_ran(1) >= 13 && condi_ran(1) <= 50
+        con = 1;  % High probability (37.5%) 
+    end 
+       
 
     % Assign the target quadrant based on 'con'
     if con == 1
@@ -249,32 +256,46 @@ for trial = 1:numTrials
    % Wait for a response
     responseMade = false;
      % Store which key was pressed
-    while ~responseMade
-        [~, keyCode] = KbStrokeWait;
+   while GetSecs - startTime < trialTimeout
+    [keyIsDown, secs, keyCode] = KbCheck;
+    respTime = GetSecs;  % Get the response time
+
+    if keyIsDown
         if strcmp(KbName(keyCode), 'Escape')
             sca;
             return;
         elseif strcmp(KbName(keyCode), 'LeftArrow')
+            rt = respTime - startTime;
             responseKey = 'Left';
             responseMade = true;
             responseangle = 270;
         elseif strcmp(KbName(keyCode), 'RightArrow')
+            rt = respTime - startTime;
             responseKey = 'Right';
             responseMade = true;
             responseangle = 90;
         end
     end
+    if responseMade
+        break;
+    end
+   end
 
     
 
     % Determine if the response is correct
-    if responseangle == targetDirection && targetDirection == 90
-        accuracy_2 = 1;
-    elseif responseangle == targetDirection && targetDirection == 270
-        accuracy_2 = 1;
-    else
+    if rt == 0
         PsychPortAudio('Start', pahandle, repetitions, startCue, waitForDeviceStart);
         accuracy_2 = 0;
+    else
+        if responseangle == targetDirection && targetDirection == 90
+            accuracy_2 = 1;
+        elseif responseangle == targetDirection && targetDirection == 270
+            accuracy_2 = 1;
+        else
+            PsychPortAudio('Start', pahandle, repetitions, startCue, waitForDeviceStart);
+            accuracy_2 = 0;
+        end
     end
 
     % Display feedback for 1 second
@@ -287,44 +308,69 @@ for trial = 1:numTrials
     ePosition2 = quadrantPositions(secondEQuad, :); % Get position for the second 'e'
     
     % Draw the second 'e' in the selected quadrant
-    DrawFormattedText(window, 'e', ePosition2(1), ePosition2(2), [1 1 1]);
-    Screen('Flip', window);
+    DrawFormattedText(window, 'E', ePosition2(1), ePosition2(2), [1 1 1]);
+    probeStartTime = Screen('Flip', window);
     
     % Wait for a response: same ('s') or different ('d')
+    probeRT = 0;
+    probeResp = 0;
+    probeTimeout = 3;  % Timeout for the dot probe task in seconds
     responseMade = false;
-    while ~responseMade
-        [~, keyCode] = KbStrokeWait;
-        if strcmp(KbName(keyCode), 'Escape')
-            clear all
-            close all
-            sca;
-            return;
-        elseif strcmp(KbName(keyCode), 's')  % 's' for same
-            responseMade = true;
-            if secondEQuad == firstEQuad
-           
-                accuracy_1 = 1;
-            else
-                PsychPortAudio('Start', pahandle, repetitions, startCue, waitForDeviceStart);
-                accuracy_1 = 0;
-            end
-        elseif strcmp(KbName(keyCode), 'd')  % 'd' for different
-            responseMade = true;
-            if secondEQuad ~= firstEQuad
-                
-                accuracy_1 = 1;
-            else
-                PsychPortAudio('Start', pahandle, repetitions, startCue, waitForDeviceStart);
-                accuracy_1 = 0;
+
+    while GetSecs - probeStartTime < probeTimeout
+        [keyIsDown, secs, keyCode] = KbCheck;
+        respTime = GetSecs;  % Capture the response time
+
+        % If a key is pressed
+        if keyIsDown
+            % ESC key to exit
+            if strcmp(KbName(keyCode), 'Escape')
+                sca;
+                return;
+            elseif strcmp(KbName(keyCode), 's')
+                probeResp = 'Same';
+                probeRT = respTime - probeStartTime;  % Calculate reaction time
+                responseMade = true;
+            elseif strcmp(KbName(keyCode), 'd')
+                probeResp = 'Different';
+                probeRT = respTime - probeStartTime;  % Calculate reaction time
+                responseMade = true;
             end
         end
+
+        % Break the loop if a valid response is made
+        if responseMade
+            break;
+        end
     end
+
+    % Check if no response was made within the allowed time (timeout)
+    if probeRT == 0
+        accuracy_1 = 0;
+        PsychPortAudio('Start', pahandle, repetitions, startCue, waitForDeviceStart);
+    else
+        % Check if the response is correct
+        if strcmp(probeResp, 'Same') && isequal(ePosition1, ePosition2)
+            accuracy_1 = 1;
+        elseif strcmp(probeResp, 'Different') && ~isequal(ePosition1, ePosition2)
+            accuracy_1 = 1;
+        else
+            accuracy_1 = 0;
+            PsychPortAudio('Start', pahandle, repetitions, startCue, waitForDeviceStart);
+        end
+    end
+
     
     if firstEQuad == targetQuadrant %Testing if the memory probe and Target appear in same quadrant 
         match = 'm'; 
     else
         match = 'n';
     end 
+
+    Screen('FillRect', window, [0 0 0]);  % Black screen (or white if preferred)
+    Screen('Flip', window);
+    WaitSecs(0.5);  % Pause for 500 ms to mark the end of the trial
+
 
  % Provide a short break after a certain number of trials
     if mod(trial,breakAfterTrials) == 0
@@ -356,6 +402,8 @@ for trial = 1:numTrials
     Accuracy_2 = cat(1, Accuracy_2,accuracy_2);
     Accuracy_1 = cat(1, Accuracy_1, accuracy_1);
     Matching = cat(1, Matching, match);
+    rt_vector = cat(1,rt_vector,rt);
+    rt_vector_one = cat(1,rt_vector_one,probeRT);
 
 end
 
