@@ -216,6 +216,11 @@ for trial = 1:numTrials
             end
         end
     end
+
+    Screen('DrawLine', window,grey, xCenter-10,yCenter,xCenter+10,yCenter,[1]);
+    Screen('DrawLine', window,grey, xCenter,yCenter-10,xCenter,yCenter+10,[1]);
+    Screen(window, 'Flip');
+    WaitSecs(0.3);
     
     % Dot Probe Task Part 1: Display 'e' before triangle task
     firstEQuad = randi(4); % Randomly select quadrant for first 'e'
@@ -225,8 +230,12 @@ for trial = 1:numTrials
     DrawFormattedText(window, 'e', ePosition1(1), ePosition1(2), [1 1 1]); 
     Screen('Flip', window);
     
-    % Wait for 300ms
-    WaitSecs(1);
+    % Wait for 500ms
+    WaitSecs(0.5);
+
+    Screen('FillRect', window, [0 0 0]);  % Black screen (or white if preferred)
+    Screen('Flip', window);
+    WaitSecs(1.5);  % Pause for 1500 ms for blank screen interval
 
     % Draw the triangles with their assigned directions for Visual Search 
     for triangle = 1:8
@@ -302,6 +311,9 @@ for trial = 1:numTrials
     Screen('Flip', window);
     WaitSecs(1);
 
+    Screen('FillRect', window, [0 0 0]);  % Black screen (or white if preferred)
+    Screen('Flip', window);
+    WaitSecs(1.5);  % Pause for 500 ms to mark the end of the trial
     
     % Dot Probe Task Part 2: Display 'e' after triangle task
     secondEQuad = randi(4); % Randomly select quadrant for second 'e'
@@ -404,8 +416,116 @@ for trial = 1:numTrials
     Matching = cat(1, Matching, match);
     rt_vector = cat(1,rt_vector,rt);
     rt_vector_one = cat(1,rt_vector_one,probeRT);
+    trial_vector = cat(1,trial_vector,trial);
+    sub = cat(1,sub,sub_no);
 
 end
+
+% Ask participant to indicate the quadrant where the target appeared most frequently
+DrawFormattedText(window, 'In which quadrant did the target appear most frequently?\n\nPress 1 for Top-Left\nPress 2 for Top-Right\nPress 3 for Bottom-Left\nPress 4 for Bottom-Right', 'center', 'center', white);
+Screen('Flip', window);
+
+% Wait for participant response
+responseGiven = false;
+participantQuadrant = '';
+while ~responseGiven
+    [keyIsDown, ~, keyCode] = KbCheck;
+    if keyIsDown
+        if keyCode(KbName('1!'))  % Response for Top-Left
+            participantQuadrant = 'Top-Left';
+            responseGiven = true;
+        elseif keyCode(KbName('2@'))  % Response for Top-Right
+            participantQuadrant = 'Top-Right';
+            responseGiven = true;
+        elseif keyCode(KbName('3#'))  % Response for Bottom-Left
+            participantQuadrant = 'Bottom-Left';
+            responseGiven = true;
+        elseif keyCode(KbName('4$'))  % Response for Bottom-Right
+            participantQuadrant = 'Bottom-Right';
+            responseGiven = true;
+        end
+    end
+end
+
+% Classify the response as high, low, or intermediate probability
+% Assuming con variable represents high, low, intermediate for the quadrants
+% Map quadrant index (1, 2, 3, 4) to the quadrant name
+quadrantNames = {'Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right'};
+
+% Identify which quadrant the participant selected
+selectedQuadrantIndex = find(strcmp(quadrantNames, participantQuadrant));
+
+% Classify the participant's response based on probability quadrant assignment
+if selectedQuadrantIndex == highProbQuadrant
+    classifiedResponse = 'H';
+elseif selectedQuadrantIndex == lowProbQuadrant
+    classifiedResponse = 'L';
+elseif any(selectedQuadrantIndex == intermediateProbQuadrants)
+    classifiedResponse = 'I';
+end
+
+ClassResponse = [];
+ClassResponse = cat(1,ClassResponse,classifiedResponse);
+
+Screen('FillRect', window, [0 0 0]);  % Black screen (or white if preferred)
+Screen('Flip', window);
+WaitSecs(0.4);  % Pause for 400 ms to add a blank screen interval between the two awareness questions
+
+% Ask participant to indicate the quadrant where the target appeared least frequently
+DrawFormattedText(window, 'In which quadrant did the target appear least frequently?\n\nPress 1 for Top-Left\nPress 2 for Top-Right\nPress 3 for Bottom-Left\nPress 4 for Bottom-Right', 'center', 'center', white);
+Screen('Flip', window);
+
+% Wait for participant response
+responseGiventwo = false;
+participantQuadranttwo = '';
+while ~responseGiventwo
+    [keyIsDown, ~, keyCode] = KbCheck;
+    if keyIsDown
+        if keyCode(KbName('1!'))  % Response for Top-Left
+            participantQuadranttwo = 'Top-Left';
+            responseGiventwo = true;
+        elseif keyCode(KbName('2@'))  % Response for Top-Right
+            participantQuadranttwo = 'Top-Right';
+            responseGiventwo = true;
+        elseif keyCode(KbName('3#'))  % Response for Bottom-Left
+            participantQuadranttwo = 'Bottom-Left';
+            responseGiventwo = true;
+        elseif keyCode(KbName('4$'))  % Response for Bottom-Right
+            participantQuadranttwo = 'Bottom-Right';
+            responseGiventwo = true;
+        end
+    end
+end
+
+% Classify the response as high, low, or intermediate probability
+% Assuming con variable represents high, low, intermediate for the quadrants
+% Map quadrant index (1, 2, 3, 4) to the quadrant name
+quadrantNamestwo = {'Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right'};
+
+% Identify which quadrant the participant selected
+selectedQuadrantIndextwo = find(strcmp(quadrantNamestwo, participantQuadranttwo));
+
+% Classify the participant's response based on probability quadrant assignment
+if selectedQuadrantIndextwo == highProbQuadrant
+    classifiedResponsetwo = 'H';
+elseif selectedQuadrantIndextwo == lowProbQuadrant
+    classifiedResponsetwo = 'L';
+elseif any(selectedQuadrantIndextwo == intermediateProbQuadrants)
+    classifiedResponsetwo = 'I';
+end
+
+ClassResponsetwo = [];
+ClassResponsetwo = cat(1,ClassResponsetwo,classifiedResponsetwo);
+
+% Display feedback based on the response
+DrawFormattedText(window, ['Thank You For Participating.'], 'center', 'center', white);
+Screen('Flip', window);
+WaitSecs(1); % Display feedback for 2 seconds
+
+varNames = {'Subject_Number', 'Trial_Number' ,'Accuracy1', 'RT1', 'Accuracy2', 'RT2', 'Matching', 'Quadrant_Type'};
+output = table(sub,trial_vector,Accuracy_1,rt_vector_one,Accuracy_2,rt_vector,Matching,QuadrantType,'VariableNames', varNames);
+filename = fullfile(folder,baseFileName);
+writetable(output,filename,'Delimiter',',')
 
 % Close the window after 5 trials
 Screen('CloseAll');
@@ -423,6 +543,10 @@ function rotated = RotateTriangle(vertices, angle)
         cos(rad), -sin(rad);
         sin(rad), cos(rad)
     ];
+    
+    % Apply the rotation matrix to the vertices
+    rotated = (rotationMatrix * vertices')';
+end
     
     % Apply the rotation matrix to the vertices
     rotated = (rotationMatrix * vertices')';
