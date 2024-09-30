@@ -1,0 +1,1 @@
+This experiment is a near replication of Experiment 1 by Gao and Theeuwes. It uses a Working Memory task and Visual Search Task to study if top-down and selection history factors show an additive or interactive effect on attentional selection
